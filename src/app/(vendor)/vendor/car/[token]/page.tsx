@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 // e.g., /vendor/car/abc123-unique-token
 
 export default function VendorCARPortal({
-  params,
+  params: _params,
 }: {
   params: { token: string };
 }) {
