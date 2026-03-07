@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { SEVERITY_LABELS, SLA_HOURS } from "@/lib/constants";
+import { SEVERITY_LABELS } from "@/lib/constants";
 
 const issues = [
   {
