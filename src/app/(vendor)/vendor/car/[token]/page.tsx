@@ -8,11 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 // This page is accessed by vendors via a unique token link — no login required
 // e.g., /vendor/car/abc123-unique-token
 
-export default function VendorCARPortal({
-  params: _params,
-}: {
-  params: { token: string };
-}) {
+export default function VendorCARPortal() {
   const [step, setStep] = useState<"review" | "acknowledge" | "root-cause" | "action-plan" | "submitted">("review");
 
   // Mock CAR data (would be fetched via token)
