@@ -1,0 +1,448 @@
+// PackIQ — Intelligent Inspection & Quality Platform for Packaging Automation
+// Database schema covering all 6 core modules:
+// 1. Inspections  2. Templates  3. Issues  4. CARs  5. Actions  6. Analytics
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// USERS & ORGANIZATIONS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  FIELD_TECH
+  ENGINEER
+  QUALITY_MANAGER
+  PRODUCTION_SUPERVISOR
+  ADMIN
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sites     Site[]
+  users     User[]
+  vendors   Vendor[]
+  templates Template[]
+}
+
+model Site {
+  id             String       @id @default(cuid())
+  name           String
+  code           String       // e.g. "TW-01" for Taiwan factory
+  timezone       String       @default("UTC")
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  lines       ProductionLine[]
+  inspections Inspection[]
+  issues      Issue[]
+
+  @@unique([organizationId, code])
+}
+
+model ProductionLine {
+  id     String @id @default(cuid())
+  name   String
+  code   String
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id])
+
+  assets      Asset[]
+  inspections Inspection[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String
+  role           UserRole
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  avatarUrl      String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  inspections       Inspection[]
+  issuesReported    Issue[]          @relation("IssueReporter")
+  issuesAssigned    Issue[]          @relation("IssueAssignee")
+  actionsCreated    Action[]         @relation("ActionCreator")
+  actionsAssigned   Action[]         @relation("ActionAssignee")
+  carsCreated       CAR[]            @relation("CARCreator")
+  carsAssigned      CAR[]            @relation("CARAssignee")
+  comments          Comment[]
+}
+
+// ─────────────────────────────────────────────
+// ASSETS (Packaging Machines)
+// ─────────────────────────────────────────────
+
+enum AssetCategory {
+  STRAPPING_MACHINE
+  STRETCH_WRAPPER
+  CASE_ERECTOR
+  CASE_SEALER
+  PALLETIZER
+  LABELER
+  SHRINK_WRAPPER
+  CONVEYOR
+  OTHER
+}
+
+model Asset {
+  id               String        @id @default(cuid())
+  name             String
+  assetTag         String        @unique
+  category         AssetCategory
+  manufacturer     String?
+  model            String?
+  serialNumber     String?
+  installDate      DateTime?
+  productionLineId String
+  productionLine   ProductionLine @relation(fields: [productionLineId], references: [id])
+  vendorId         String?
+  vendor           Vendor?       @relation(fields: [vendorId], references: [id])
+  metadata         Json?         // flexible key-value for machine-specific fields
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  inspections Inspection[]
+  issues      Issue[]
+}
+
+// ─────────────────────────────────────────────
+// MODULE 1: TEMPLATES
+// ─────────────────────────────────────────────
+
+enum TemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum TemplateItemType {
+  TEXT
+  NUMBER
+  CHECKBOX
+  RADIO
+  DROPDOWN
+  PHOTO
+  SIGNATURE
+  DATE_TIME
+  SLIDER
+  PASS_FAIL
+  READING       // numeric reading with min/max thresholds
+  BARCODE_SCAN
+  ANNOTATION    // photo annotation / markup
+  INFORMATION   // read-only instruction block
+}
+
+model Template {
+  id             String         @id @default(cuid())
+  name           String
+  description    String?
+  status         TemplateStatus @default(DRAFT)
+  version        Int            @default(1)
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  assetCategory  AssetCategory? // null = generic, set = machine-specific
+  sections       Json           // ordered array of sections with items
+  scoringEnabled Boolean        @default(false)
+  maxScore       Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  publishedAt    DateTime?
+  createdById    String?
+
+  versions    TemplateVersion[]
+  inspections Inspection[]
+}
+
+model TemplateVersion {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id])
+  version    Int
+  sections   Json
+  changelog  String?
+  createdAt  DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// MODULE 2: INSPECTIONS
+// ─────────────────────────────────────────────
+
+enum InspectionStatus {
+  DRAFT
+  IN_PROGRESS
+  PAUSED
+  SUBMITTED
+  REVIEWED
+  CLOSED
+}
+
+model Inspection {
+  id               String           @id @default(cuid())
+  title            String?
+  status           InspectionStatus @default(DRAFT)
+  templateId       String
+  template         Template         @relation(fields: [templateId], references: [id])
+  templateVersion  Int
+  inspectorId      String
+  inspector        User             @relation(fields: [inspectorId], references: [id])
+  siteId           String
+  site             Site             @relation(fields: [siteId], references: [id])
+  productionLineId String?
+  productionLine   ProductionLine?  @relation(fields: [productionLineId], references: [id])
+  assetId          String?
+  asset            Asset?           @relation(fields: [assetId], references: [id])
+  responses        Json             // completed form data keyed by item id
+  score            Float?
+  scorePercentage  Float?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  duration         Int?             // seconds
+  latitude         Float?
+  longitude        Float?
+  offlineSync      Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  findings InspectionFinding[]
+}
+
+model InspectionFinding {
+  id           String     @id @default(cuid())
+  inspectionId String
+  inspection   Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  itemId       String
+  itemLabel    String
+  value        Json
+  severity     Severity   @default(MEDIUM)
+  autoDetected Boolean    @default(false)
+  notes        String?
+  photos       String[]
+  createdAt    DateTime   @default(now())
+
+  issue Issue?
+}
+
+// ─────────────────────────────────────────────
+// MODULE 3: ISSUES
+// ─────────────────────────────────────────────
+
+enum Severity {
+  P1_CRITICAL  // Line down / safety — SLA: 1 hour response
+  P2_HIGH      // Quality hold / repeated failure — SLA: 4 hours
+  P3_MEDIUM    // Degraded performance — SLA: 24 hours
+  P4_LOW       // Cosmetic / minor — SLA: 1 week
+}
+
+enum IssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  ON_HOLD
+  RESOLVED
+  VERIFIED
+  CLOSED
+}
+
+model Issue {
+  id          String      @id @default(cuid())
+  number      Int         @default(autoincrement())
+  title       String
+  description String
+  status      IssueStatus @default(OPEN)
+  severity    Severity
+  siteId      String
+  site        Site        @relation(fields: [siteId], references: [id])
+  assetId     String?
+  asset       Asset?      @relation(fields: [assetId], references: [id])
+  reporterId  String
+  reporter    User        @relation("IssueReporter", fields: [reporterId], references: [id])
+  assigneeId  String?
+  assignee    User?       @relation("IssueAssignee", fields: [assigneeId], references: [id])
+  findingId   String?     @unique
+  finding     InspectionFinding? @relation(fields: [findingId], references: [id])
+  photos      String[]
+  slaDeadline DateTime?
+  resolvedAt  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  car      CAR?
+  actions  Action[]
+  comments Comment[]
+}
+
+// ─────────────────────────────────────────────
+// MODULE 4: CORRECTIVE ACTION REQUESTS (CARs)
+// ─────────────────────────────────────────────
+
+enum CARStatus {
+  DRAFT
+  ISSUED
+  VENDOR_ACKNOWLEDGED
+  ROOT_CAUSE_SUBMITTED
+  CORRECTIVE_ACTION_PLAN
+  VERIFICATION
+  CLOSED
+}
+
+model CAR {
+  id              String    @id @default(cuid())
+  number          Int       @default(autoincrement())
+  title           String
+  description     String
+  status          CARStatus @default(DRAFT)
+  issueId         String?   @unique
+  issue           Issue?    @relation(fields: [issueId], references: [id])
+  vendorId        String?
+  vendor          Vendor?   @relation(fields: [vendorId], references: [id])
+  creatorId       String
+  creator         User      @relation("CARCreator", fields: [creatorId], references: [id])
+  assigneeId      String?
+  assignee        User?     @relation("CARAssignee", fields: [assigneeId], references: [id])
+  // 5-Why Root Cause Analysis
+  why1            String?
+  why2            String?
+  why3            String?
+  why4            String?
+  why5            String?
+  rootCause       String?
+  correctiveAction String?
+  preventiveAction String?
+  targetDate      DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  // Vendor portal (no-login access)
+  vendorToken     String?   @unique
+  vendorTokenExp  DateTime?
+  vendorResponse  Json?
+  vendorRespondedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  actions  Action[]
+  comments Comment[]
+}
+
+// ─────────────────────────────────────────────
+// MODULE 5: ACTIONS
+// ─────────────────────────────────────────────
+
+enum ActionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum ActionPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Action {
+  id          String         @id @default(cuid())
+  number      Int            @default(autoincrement())
+  title       String
+  description String?
+  status      ActionStatus   @default(PENDING)
+  priority    ActionPriority @default(MEDIUM)
+  creatorId   String
+  creator     User           @relation("ActionCreator", fields: [creatorId], references: [id])
+  assigneeId  String?
+  assignee    User?          @relation("ActionAssignee", fields: [assigneeId], references: [id])
+  issueId     String?
+  issue       Issue?         @relation(fields: [issueId], references: [id])
+  carId       String?
+  car         CAR?           @relation(fields: [carId], references: [id])
+  dueDate     DateTime?
+  completedAt DateTime?
+  evidence    String[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  comments Comment[]
+}
+
+// ─────────────────────────────────────────────
+// VENDORS (External)
+// ─────────────────────────────────────────────
+
+model Vendor {
+  id             String       @id @default(cuid())
+  name           String
+  code           String
+  contactName    String?
+  contactEmail   String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assets Asset[]
+  cars   CAR[]
+  scores VendorScore[]
+
+  @@unique([organizationId, code])
+}
+
+// ─────────────────────────────────────────────
+// MODULE 6: ANALYTICS — Vendor Scorecard
+// ─────────────────────────────────────────────
+
+model VendorScore {
+  id             String   @id @default(cuid())
+  vendorId       String
+  vendor         Vendor   @relation(fields: [vendorId], references: [id])
+  period         String   // e.g. "2026-Q1" or "2026-W10"
+  // Weighted dimensions
+  qualityScore   Float    // weight: 40%
+  deliveryScore  Float    // weight: 25%
+  responsivenessScore Float // weight: 20%
+  complianceScore Float   // weight: 15%
+  overallScore   Float    // weighted composite
+  issueCount     Int      @default(0)
+  carCount       Int      @default(0)
+  avgResolutionDays Float?
+  createdAt      DateTime @default(now())
+
+  @@unique([vendorId, period])
+}
+
+// ─────────────────────────────────────────────
+// SHARED: COMMENTS
+// ─────────────────────────────────────────────
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  issueId   String?
+  issue     Issue?   @relation(fields: [issueId], references: [id])
+  carId     String?
+  car       CAR?     @relation(fields: [carId], references: [id])
+  actionId  String?
+  action    Action?  @relation(fields: [actionId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
