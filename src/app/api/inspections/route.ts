@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorize, requireInternalAuth } from "@/lib/auth";
-import { assertAssetInOrg, assertProductionLineInOrg, assertSiteInOrg, assertTemplateInOrg } from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalAuth(request);

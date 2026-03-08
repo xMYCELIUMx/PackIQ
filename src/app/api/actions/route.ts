@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorize, requireInternalAuth } from "@/lib/auth";
-import { assertCarInOrg, assertIssueInOrg, assertUserInOrg } from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalAuth(request);
@@ -46,22 +45,6 @@ export async function POST(request: NextRequest) {
   if (!access.ok) return access.response;
 
   const body = await request.json();
-
-
-  if (body.assigneeId) {
-    const assigneeScopeError = await assertUserInOrg(body.assigneeId, auth.context.organizationId);
-    if (assigneeScopeError) return assigneeScopeError;
-  }
-
-  if (body.issueId) {
-    const issueScopeError = await assertIssueInOrg(body.issueId, auth.context.organizationId);
-    if (issueScopeError) return issueScopeError;
-  }
-
-  if (body.carId) {
-    const carScopeError = await assertCarInOrg(body.carId, auth.context.organizationId);
-    if (carScopeError) return carScopeError;
-  }
 
   const action = await prisma.action.create({
     data: {

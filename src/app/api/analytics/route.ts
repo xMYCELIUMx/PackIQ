@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_SCORE_WEIGHTS } from "@/lib/constants";
 import { authorize, requireInternalAuth } from "@/lib/auth";
-import { assertVendorInOrg } from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalAuth(request);
@@ -86,9 +85,6 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { vendorId, period } = body;
-
-  const vendorScopeError = await assertVendorInOrg(vendorId, auth.context.organizationId);
-  if (vendorScopeError) return vendorScopeError;
 
   const overallScore =
     body.qualityScore * VENDOR_SCORE_WEIGHTS.quality +

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { SLA_HOURS } from "@/lib/constants";
 import { authorize, requireInternalAuth } from "@/lib/auth";
-import { assertAssetInOrg, assertFindingInOrg, assertSiteInOrg, assertUserInOrg } from "@/lib/api-guards";
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalAuth(request);
@@ -48,25 +47,6 @@ export async function POST(request: NextRequest) {
   if (!access.ok) return access.response;
 
   const body = await request.json();
-
-
-  const siteScopeError = await assertSiteInOrg(body.siteId, auth.context.organizationId);
-  if (siteScopeError) return siteScopeError;
-
-  if (body.assetId) {
-    const assetScopeError = await assertAssetInOrg(body.assetId, auth.context.organizationId);
-    if (assetScopeError) return assetScopeError;
-  }
-
-  if (body.assigneeId) {
-    const assigneeScopeError = await assertUserInOrg(body.assigneeId, auth.context.organizationId);
-    if (assigneeScopeError) return assigneeScopeError;
-  }
-
-  if (body.findingId) {
-    const findingScopeError = await assertFindingInOrg(body.findingId, auth.context.organizationId);
-    if (findingScopeError) return findingScopeError;
-  }
 
   const slaHours = SLA_HOURS[body.severity] || 24;
   const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
