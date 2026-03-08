@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  // Generate unique vendor portal token
+  // Generate unique external response token
   const vendorToken = randomBytes(32).toString("hex");
   const vendorTokenExp = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
