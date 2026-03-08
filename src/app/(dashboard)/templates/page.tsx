@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -85,15 +86,38 @@ const machineLibrary = [
 ];
 
 export default function TemplatesPage() {
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [mode, setMode] = useState<"edit" | "preview">("preview");
+
+  const activeTemplate = templates.find((tpl) => tpl.id === activeTemplateId);
+
   return (
     <div>
       <Header
         title="Templates"
         description="Drag-and-drop template builder with conditional logic and version control"
-        action={{ label: "+ New Template" }}
+        action={{ label: "+ New Template", href: "/templates/new" }}
       />
 
-      {/* Machine Library */}
+      {activeTemplate && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase text-blue-700 tracking-wide">
+                  Template {mode}
+                </p>
+                <p className="text-sm font-semibold text-gray-900">{activeTemplate.name}</p>
+                <p className="text-xs text-gray-600 mt-1">{activeTemplate.description}</p>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setActiveTemplateId(null)}>
+                Close
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="mb-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
           Pre-Built Machine Library
@@ -113,7 +137,6 @@ export default function TemplatesPage() {
         </div>
       </div>
 
-      {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templates.map((tpl) => (
           <Card key={tpl.id} className="hover:shadow-md transition-shadow">
@@ -124,9 +147,7 @@ export default function TemplatesPage() {
                 </Badge>
                 <span className="text-xs text-gray-400">v{tpl.version}</span>
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                {tpl.name}
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">{tpl.name}</h3>
               <p className="text-xs text-gray-500 mb-4">{tpl.description}</p>
               {tpl.category && (
                 <Badge variant="info" className="mb-3">
@@ -139,10 +160,10 @@ export default function TemplatesPage() {
                 {tpl.lastUsed && <span>Last: {tpl.lastUsed}</span>}
               </div>
               <div className="flex gap-2 mt-4">
-                <Button variant="secondary" size="sm" className="flex-1">
+                <Button variant="secondary" size="sm" className="flex-1" onClick={() => { setMode("edit"); setActiveTemplateId(tpl.id); }}>
                   Edit
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-1">
+                <Button variant="ghost" size="sm" className="flex-1" onClick={() => { setMode("preview"); setActiveTemplateId(tpl.id); }}>
                   Preview
                 </Button>
               </div>

@@ -85,8 +85,10 @@ const statusFilters = ["All", "DRAFT", "IN_PROGRESS", "SUBMITTED", "REVIEWED", "
 
 export default function InspectionsPage() {
   const [filter, setFilter] = useState("All");
+  const [activeInspectionId, setActiveInspectionId] = useState<string | null>(null);
 
   const filtered = filter === "All" ? inspections : inspections.filter((i) => i.status === filter);
+  const activeInspection = inspections.find((i) => i.id === activeInspectionId);
 
   return (
     <div>
@@ -95,6 +97,17 @@ export default function InspectionsPage() {
         description="Mobile-first inspection management with Smart Finding Engine"
         action={{ label: "+ New Inspection", href: "/inspections/new" }}
       />
+
+      {activeInspection && (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Inspection details</p>
+            <p className="text-sm font-semibold text-gray-900">{activeInspection.id} · {activeInspection.title}</p>
+            <p className="text-xs text-gray-600 mt-1">Inspector: {activeInspection.inspector} · Asset: {activeInspection.asset}</p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setActiveInspectionId(null)}>Close</Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-2 mb-6">
@@ -178,7 +191,7 @@ export default function InspectionsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => setActiveInspectionId(insp.id)}>
                       View
                     </Button>
                   </td>
