@@ -4,7 +4,7 @@ import { authorize, requireInternalAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const auth = await requireInternalAuth(request);
-  if (auth.response) return auth.response;
+  if (!auth.ok) return auth.response;
 
   const access = authorize(auth.context, "readActions");
   if (!access.ok) return access.response;
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await requireInternalAuth(request);
-  if (auth.response) return auth.response;
+  if (!auth.ok) return auth.response;
 
   const access = authorize(auth.context, "writeActions");
   if (!access.ok) return access.response;

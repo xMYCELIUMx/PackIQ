@@ -37,6 +37,25 @@ type Permission =
   | "readVendors"
   | "writeVendors";
 
+type AuthSuccess<TContext> = {
+  ok: true;
+  context: TContext;
+};
+
+type AuthFailure = {
+  ok: false;
+  response: NextResponse<{ error: string }>;
+};
+
+type AuthorizationSuccess = {
+  ok: true;
+};
+
+type AuthorizationFailure = {
+  ok: false;
+  response: NextResponse<{ error: string }>;
+};
+
 const ROLE_POLICY: Record<Role, Record<Permission, boolean>> = {
   FIELD_TECH: {
     readInspections: true,
@@ -175,7 +194,7 @@ export async function requireInternalAuth(request: NextRequest) {
   }
 
   if (!userId) {
-    return { context: null, response: unauthorized() };
+    return { ok: false, response: unauthorized() } satisfies AuthFailure;
   }
 
   const user = await prisma.user.findUnique({
@@ -184,18 +203,18 @@ export async function requireInternalAuth(request: NextRequest) {
   });
 
   if (!user || !user.isActive) {
-    return { context: null, response: unauthorized("Invalid user session") };
+    return { ok: false, response: unauthorized("Invalid user session") } satisfies AuthFailure;
   }
 
   return {
+    ok: true,
     context: {
       kind: "internal" as const,
       userId: user.id,
       role: user.role as Role,
       organizationId: user.organizationId,
     },
-    response: null,
-  };
+  } satisfies AuthSuccess<InternalAuthContext>;
 }
 
 export async function requireVendorTokenAuth(request: NextRequest) {
@@ -204,7 +223,7 @@ export async function requireVendorTokenAuth(request: NextRequest) {
   const vendorToken = tokenFromHeader || tokenFromQuery;
 
   if (!vendorToken) {
-    return { context: null, response: unauthorized("Vendor token required") };
+    return { ok: false, response: unauthorized("Vendor token required") } satisfies AuthFailure;
   }
 
   const car = await prisma.cAR.findFirst({
@@ -216,24 +235,24 @@ export async function requireVendorTokenAuth(request: NextRequest) {
   });
 
   if (!car) {
-    return { context: null, response: unauthorized("Invalid or expired vendor token") };
+    return { ok: false, response: unauthorized("Invalid or expired vendor token") } satisfies AuthFailure;
   }
 
   return {
+    ok: true,
     context: {
       kind: "vendor" as const,
       vendorToken,
       carId: car.id,
       vendorId: car.vendorId,
     },
-    response: null,
-  };
+  } satisfies AuthSuccess<VendorAuthContext>;
 }
 
 export function authorize(context: InternalAuthContext, permission: Permission) {
   if (!ROLE_POLICY[context.role]?.[permission]) {
-    return { ok: false, response: forbidden(permission) };
+    return { ok: false, response: forbidden(permission) } satisfies AuthorizationFailure;
   }
 
-  return { ok: true, response: null };
+  return { ok: true } satisfies AuthorizationSuccess;
 }

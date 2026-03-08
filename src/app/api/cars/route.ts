@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
   if (hasVendorToken) {
     const vendorAuth = await requireVendorTokenAuth(request);
-    if (vendorAuth.response) return vendorAuth.response;
+    if (!vendorAuth.ok) return vendorAuth.response;
 
     const vendorCar = await prisma.cAR.findFirst({
       where: { id: vendorAuth.context.carId },
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   const auth = await requireInternalAuth(request);
-  if (auth.response) return auth.response;
+  if (!auth.ok) return auth.response;
 
   const access = authorize(auth.context, "readCars");
   if (!access.ok) return access.response;
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await requireInternalAuth(request);
-  if (auth.response) return auth.response;
+  if (!auth.ok) return auth.response;
 
   const access = authorize(auth.context, "writeCars");
   if (!access.ok) return access.response;
