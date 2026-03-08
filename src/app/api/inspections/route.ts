@@ -46,6 +46,23 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
 
+
+  const templateScopeError = await assertTemplateInOrg(body.templateId, auth.context.organizationId);
+  if (templateScopeError) return templateScopeError;
+
+  const siteScopeError = await assertSiteInOrg(body.siteId, auth.context.organizationId);
+  if (siteScopeError) return siteScopeError;
+
+  if (body.productionLineId) {
+    const lineScopeError = await assertProductionLineInOrg(body.productionLineId, auth.context.organizationId);
+    if (lineScopeError) return lineScopeError;
+  }
+
+  if (body.assetId) {
+    const assetScopeError = await assertAssetInOrg(body.assetId, auth.context.organizationId);
+    if (assetScopeError) return assetScopeError;
+  }
+
   const inspection = await prisma.inspection.create({
     data: {
       title: body.title,
