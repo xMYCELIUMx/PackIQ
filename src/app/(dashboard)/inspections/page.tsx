@@ -93,7 +93,7 @@ export default function InspectionsPage() {
       <Header
         title="Inspections"
         description="Mobile-first inspection management with Smart Finding Engine"
-        action={{ label: "+ New Inspection" }}
+        action={{ label: "+ New Inspection", href: "/inspections/new" }}
       />
 
       {/* Filters */}
