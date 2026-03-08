@@ -5,9 +5,6 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  // Prisma 7 requires either an adapter or accelerateUrl.
-  // We use accelerateUrl to keep the app buildable in environments where
-  // driver adapter packages are unavailable at install time.
   const accelerateUrl =
     process.env.PRISMA_ACCELERATE_URL ??
     process.env.DATABASE_URL ??
@@ -16,8 +13,25 @@ function createPrismaClient() {
   return new PrismaClient({ accelerateUrl });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function getPrismaClient() {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  const client = createPrismaClient();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+
+  return client;
 }
+
+// Lazy proxy prevents Prisma client construction at module-import/build-analysis time.
+// The real client is instantiated on first actual usage.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = getPrismaClient();
+    return Reflect.get(client, prop, receiver);
+  },
+});
