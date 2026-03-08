@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { authorize, requireInternalAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const orgId = searchParams.get("organizationId");
+  const auth = await requireInternalAuth(request);
+  if (!auth.ok) return auth.response;
 
-  const where: Record<string, unknown> = {};
-  if (orgId) where.organizationId = orgId;
+  const access = authorize(auth.context, "readVendors");
+  if (!access.ok) return access.response;
 
   const vendors = await prisma.vendor.findMany({
-    where,
+    where: { organizationId: auth.context.organizationId },
     include: {
       _count: { select: { assets: true, cars: true } },
       scores: {
@@ -24,6 +25,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireInternalAuth(request);
+  if (!auth.ok) return auth.response;
+
+  const access = authorize(auth.context, "writeVendors");
+  if (!access.ok) return access.response;
+
   const body = await request.json();
 
   const vendor = await prisma.vendor.create({
@@ -32,7 +39,7 @@ export async function POST(request: NextRequest) {
       code: body.code,
       contactName: body.contactName,
       contactEmail: body.contactEmail,
-      organizationId: body.organizationId,
+      organizationId: auth.context.organizationId,
     },
   });
 
