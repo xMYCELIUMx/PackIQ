@@ -37,7 +37,7 @@ export default function CARsPage() {
     <div>
       <Header
         title="Corrective Action Requests"
-        description="5-Why root cause analysis across a 7-stage lifecycle"
+        description="5-Why root cause analysis with vendor portal (no login required)"
         action={{ label: "+ New CAR", href: "/cars/new" }}
       />
 
