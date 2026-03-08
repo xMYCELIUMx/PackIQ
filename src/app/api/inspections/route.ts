@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { authorize, requireInternalAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireInternalAuth(request);
+  if (auth.response) return auth.response;
+
+  const access = authorize(auth.context, "readInspections");
+  if (!access.ok) return access.response;
+
   const searchParams = request.nextUrl.searchParams;
   const status = searchParams.get("status");
   const siteId = searchParams.get("siteId");
   const inspectorId = searchParams.get("inspectorId");
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = {
+    site: { organizationId: auth.context.organizationId },
+  };
   if (status) where.status = status;
   if (siteId) where.siteId = siteId;
   if (inspectorId) where.inspectorId = inspectorId;
@@ -29,6 +38,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireInternalAuth(request);
+  if (auth.response) return auth.response;
+
+  const access = authorize(auth.context, "writeInspections");
+  if (!access.ok) return access.response;
+
   const body = await request.json();
 
   const inspection = await prisma.inspection.create({
@@ -36,7 +51,7 @@ export async function POST(request: NextRequest) {
       title: body.title,
       templateId: body.templateId,
       templateVersion: body.templateVersion,
-      inspectorId: body.inspectorId,
+      inspectorId: auth.context.userId,
       siteId: body.siteId,
       productionLineId: body.productionLineId,
       assetId: body.assetId,

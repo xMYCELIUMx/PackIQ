@@ -1,29 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { VENDOR_SCORE_WEIGHTS } from "@/lib/constants";
+import { authorize, requireInternalAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireInternalAuth(request);
+  if (auth.response) return auth.response;
+
+  const access = authorize(auth.context, "readAnalytics");
+  if (!access.ok) return access.response;
+
   const searchParams = request.nextUrl.searchParams;
   const type = searchParams.get("type") || "overview";
 
   if (type === "overview") {
-    const [inspectionCount, openIssues, activeCARs, overdueActions] =
-      await Promise.all([
-        prisma.inspection.count({
-          where: {
-            createdAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            },
+    const [inspectionCount, openIssues, activeCARs, overdueActions] = await Promise.all([
+      prisma.inspection.count({
+        where: {
+          site: { organizationId: auth.context.organizationId },
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
-        }),
-        prisma.issue.count({
-          where: { status: { in: ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"] } },
-        }),
-        prisma.cAR.count({
-          where: { status: { notIn: ["CLOSED", "DRAFT"] } },
-        }),
-        prisma.action.count({ where: { status: "OVERDUE" } }),
-      ]);
+        },
+      }),
+      prisma.issue.count({
+        where: {
+          site: { organizationId: auth.context.organizationId },
+          status: { in: ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"] },
+        },
+      }),
+      prisma.cAR.count({
+        where: {
+          vendor: { organizationId: auth.context.organizationId },
+          status: { notIn: ["CLOSED", "DRAFT"] },
+        },
+      }),
+      prisma.action.count({
+        where: {
+          OR: [
+            { issue: { site: { organizationId: auth.context.organizationId } } },
+            { car: { vendor: { organizationId: auth.context.organizationId } } },
+          ],
+          status: "OVERDUE",
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       inspectionsThisWeek: inspectionCount,
@@ -37,7 +58,9 @@ export async function GET(request: NextRequest) {
     const vendorId = searchParams.get("vendorId");
     const period = searchParams.get("period");
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      vendor: { organizationId: auth.context.organizationId },
+    };
     if (vendorId) where.vendorId = vendorId;
     if (period) where.period = period;
 
@@ -53,12 +76,16 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ error: "Unknown analytics type" }, { status: 400 });
 }
 
-// Recalculate vendor scores
 export async function POST(request: NextRequest) {
+  const auth = await requireInternalAuth(request);
+  if (auth.response) return auth.response;
+
+  const access = authorize(auth.context, "writeAnalytics");
+  if (!access.ok) return access.response;
+
   const body = await request.json();
   const { vendorId, period } = body;
 
-  // Calculate weighted overall score
   const overallScore =
     body.qualityScore * VENDOR_SCORE_WEIGHTS.quality +
     body.deliveryScore * VENDOR_SCORE_WEIGHTS.delivery +
