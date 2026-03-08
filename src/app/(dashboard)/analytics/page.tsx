@@ -141,6 +141,7 @@ function ScoreBar({ score, label }: { score: number; label: string }) {
 
 export default function AnalyticsPage() {
   const [view, setView] = useState<DashboardView>("operations");
+  const [lastAction, setLastAction] = useState<string | null>(null);
 
   const kpis = kpiSets[view];
 
@@ -150,6 +151,12 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Three dashboard views with vendor scorecards and 7 standard reports"
       />
+
+      {lastAction && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {lastAction}
+        </div>
+      )}
 
       {/* Dashboard View Switcher */}
       <div className="flex gap-2 mb-8">
@@ -206,7 +213,7 @@ export default function AnalyticsPage() {
                 Weighted: Quality 40% · Delivery 25% · Responsiveness 20% · Compliance 15%
               </p>
             </div>
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={() => setLastAction("Vendor scorecard export queued (CSV + PDF).")}>
               Export
             </Button>
           </div>
@@ -303,7 +310,7 @@ export default function AnalyticsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Badge variant="default">{report.frequency}</Badge>
-                <Button variant="secondary" size="sm">
+                <Button variant="secondary" size="sm" onClick={() => setLastAction(`Generated ${report.name} (${report.frequency}).`)}>
                   Generate
                 </Button>
               </div>

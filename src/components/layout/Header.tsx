@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 export function Header({
@@ -19,9 +20,14 @@ export function Header({
           <p className="mt-1 text-sm text-gray-500">{description}</p>
         )}
       </div>
-      {action && (
-        <Button onClick={action.onClick}>{action.label}</Button>
-      )}
+      {action &&
+        (action.href ? (
+          <Link href={action.href}>
+            <Button>{action.label}</Button>
+          </Link>
+        ) : (
+          <Button onClick={action.onClick}>{action.label}</Button>
+        ))}
     </div>
   );
 }
