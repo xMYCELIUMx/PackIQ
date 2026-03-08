@@ -15,7 +15,7 @@ Intelligent inspection and quality platform built for packaging automation.
 1. **Inspections** — Mobile-first inspection management with Smart Finding Engine
 2. **Templates** — Drag-and-drop builder with conditional logic, version control, and pre-built machine library
 3. **Issues** — P1–P4 severity tracking with SLA definitions (1hr → 1 week)
-4. **CARs** — Corrective Action Requests with 5-Why workflow, 7-stage lifecycle, and vendor portal (no login required)
+4. **CARs** — Corrective Action Requests with 5-Why workflow and 7-stage lifecycle
 5. **Actions** — Role-restricted action management (technicians log issues, managers create actions)
 6. **Analytics** — Three dashboard views (Operations, Quality, Executive), vendor scorecards, and 7 standard reports
 
@@ -55,8 +55,6 @@ src/
 │   │   ├── cars/             # Corrective Action Requests
 │   │   ├── actions/          # Action management
 │   │   └── analytics/        # Dashboards and reports
-│   ├── (vendor)/             # Public vendor portal
-│   │   └── vendor/car/[token]/
 │   └── api/                  # REST API routes
 ├── components/
 │   ├── ui/                   # Reusable UI components
